@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC TransformAção - Dashboard</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #f59e0b;
+      --shadow: 0 10px 25px rgba(0,0,0,0.06);
+      --radius: 16px;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: auto;
+    }
+
+    header {
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--muted);
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .badge {
+      background: white;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .loading {
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: bold;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin: 24px 0;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .card h3 {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+
+    .card .value {
+      font-size: 34px;
+      font-weight: bold;
+    }
+
+    .filters {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .filters input,
+    .filters select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .chart-container,
+    .table-container {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .chart-title,
+    .table-title {
+      margin-bottom: 20px;
+      font-size: 22px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+    }
+
+    thead {
+      background: #eff6ff;
+    }
+
+    th, td {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--primary);
+    }
+
+    tr:hover {
+      background: #f8fafc;
+    }
+
+    .tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .status-aberto {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-fechado {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .prioridade-alta {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .prioridade-critica {
+      background: #fecaca;
+      color: #991b1b;
+    }
+
+    canvas {
+      width: 100%;
+      max-height: 400px;
+    }
+
+    @media(max-width: 768px) {
+      body {
+        padding: 14px;
+      }
+
+      header h1 {
+        font-size: 24px;
+      }
+
+      .card .value {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <header>
+      <h1>SAC TransformAção</h1>
+      <p>Dashboard didático de atendimento ao cliente com atualização automática.</p>
+
+      <div class="status-bar">
+        <div class="badge" id="loadingStatus">
+          Carregando dados...
+        </div>
+
+        <div class="badge">
+          Última atualização:
+          <span id="lastUpdate">--</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="kpis">
+
+      <div class="card">
+        <h3>Total de Atendimentos</h3>
+        <div class="value" id="kpiTotal">0</div>
+      </div>
+
+      <div class="card">
+        <h3>Atendimentos Abertos</h3>
+        <div class="value" id="kpiOpen">0</div>
+      </div>
+
+      <div class="card">
+        <h3>Atendimentos Críticos</h3>
+        <div class="value" id="kpiCritical">0</div>
+      </div>
+
+      <div class="card">
+        <h3>Produto com Mais Registros</h3>
+        <div class="value" id="kpiTopProduct">-</div>
+      </div>
+
+    </section>
+
+    <!-- FILTROS -->
+    <section class="filters">
+
+      <div>
+        <label>Buscar</label>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Cliente, pedido, produto ou status"
+        />
+      </div>
+
+      <div>
+        <label>Status</label>
+        <select id="statusFilter">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Prioridade</label>
+        <select id="priorityFilter">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+    </section>
+
+    <!-- GRÁFICO -->
+    <section class="chart-container">
+      <h2 class="chart-title">Produtos com Mais Atendimentos</h2>
+
+      <canvas id="productChart"></canvas>
+    </section>
+
+    <!-- TABELA -->
+    <section class="table-container">
+      <h2 class="table-title">Registros de Atendimento</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Data</th>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Produto</th>
+            <th>Categoria</th>
+            <th>Prioridade</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody id="tableBody"></tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <script>
+    // ============================
+    // CONFIGURAÇÃO
+    // ============================
+
+    const CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwd8BZdyjbVDMMyXwOxqMkbxIYUz8b9ECwNvY2BYvwWjm6N4k4wHybiKM88bPV2IrCx0H9zZgKCggl/pub?gid=0&single=true&output=csv";
+
+    let allData = [];
+
+    // ============================
+    // ESCAPAR HTML (ANTI XSS)
+    // ============================
+
+    function escapeHTML(value) {
+      if (!value) return "-";
+
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // ============================
+    // CONVERTER CSV EM OBJETO
+    // ============================
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split("\n");
+
+      const headers = lines[0]
+        .split(",")
+        .map(h => h.trim());
+
+      return lines.slice(1).map(line => {
+        const values = line.split(",");
+
+        const obj = {};
+
+        headers.forEach((header, index) => {
+          obj[header] = values[index]
+            ? values[index].trim()
+            : "";
+        });
+
+        return obj;
+      });
+    }
+
+    // ============================
+    // CARREGAR DADOS
+    // ============================
+
+    async function loadData() {
+
+      const loadingStatus = document.getElementById("loadingStatus");
+
+      loadingStatus.innerHTML =
+        '<span class="loading">Carregando dados...</span>';
+
+      try {
+
+        const response = await fetch(CSV_URL);
+
+        if (!response.ok) {
+          throw new Error("Erro ao carregar CSV");
+        }
+
+        const csvText = await response.text();
+
+        allData = parseCSV(csvText);
+
+        updateDashboard(allData);
+
+        fillFilters(allData);
+
+        updateLastUpdate();
+
+        loadingStatus.innerHTML =
+          '<span class="loading">Dados carregados com sucesso</span>';
+
+      } catch (error) {
+
+        console.error(error);
+
+        loadingStatus.innerHTML =
+          '<span class="error">Erro ao carregar os dados do CSV</span>';
+      }
+    }
+
+    // ============================
+    // ATUALIZAR KPIs + TABELA
+    // ============================
+
+    function updateDashboard(data) {
+
+      // KPI TOTAL
+      document.getElementById("kpiTotal").textContent =
+        data.length;
+
+      // KPI ABERTOS
+      const openCount = data.filter(item =>
+        item.Status?.toLowerCase().includes("aberto")
+      ).length;
+
+      document.getElementById("kpiOpen").textContent =
+        openCount;
+
+      // KPI CRÍTICOS
+      const criticalCount = data.filter(item =>
+        item.Prioridade?.toLowerCase().includes("crit")
+      ).length;
+
+      document.getElementById("kpiCritical").textContent =
+        criticalCount;
+
+      // PRODUTO MAIS FREQUENTE
+      const productMap = {};
+
+      data.forEach(item => {
+
+        const product = item.Produto || "Não informado";
+
+        productMap[product] =
+          (productMap[product] || 0) + 1;
+      });
+
+      let topProduct = "-";
+      let topCount = 0;
+
+      Object.entries(productMap).forEach(([product, count]) => {
+
+        if (count > topCount) {
+          topProduct = product;
+          topCount = count;
+        }
+      });
+
+      document.getElementById("kpiTopProduct").textContent =
+        topProduct;
+
+      renderTable(data);
+
+      renderChart(productMap);
+    }
+
+    // ============================
+    // TABELA
+    // ============================
+
+    function renderTable(data) {
+
+      const tbody =
+        document.getElementById("tableBody");
+
+      tbody.innerHTML = "";
+
+      data.forEach(item => {
+
+        const tr = document.createElement("tr");
+
+        const statusClass =
+          item.Status?.toLowerCase().includes("aberto")
+            ? "status-aberto"
+            : "status-fechado";
+
+        const priorityClass =
+          item.Prioridade?.toLowerCase().includes("crit")
+            ? "prioridade-critica"
+            : "prioridade-alta";
+
+        tr.innerHTML = `
+          <td>${escapeHTML(item.ID)}</td>
+          <td>${escapeHTML(item.Data_Abertura)}</td>
+          <td>${escapeHTML(item.Numero_Pedido)}</td>
+          <td>${escapeHTML(item.Nome_Cliente)}</td>
+          <td>${escapeHTML(item.Produto)}</td>
+          <td>${escapeHTML(item.Categoria)}</td>
+
+          <td>
+            <span class="tag ${priorityClass}">
+              ${escapeHTML(item.Prioridade)}
+            </span>
+          </td>
+
+          <td>
+            <span class="tag ${statusClass}">
+              ${escapeHTML(item.Status)}
+            </span>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ============================
+    // FILTROS
+    // ============================
+
+    function fillFilters(data) {
+
+      const statusFilter =
+        document.getElementById("statusFilter");
+
+      const priorityFilter =
+        document.getElementById("priorityFilter");
+
+      const statuses =
+        [...new Set(data.map(item => item.Status))];
+
+      const priorities =
+        [...new Set(data.map(item => item.Prioridade))];
+
+      statusFilter.innerHTML =
+        '<option value="">Todos</option>';
+
+      priorityFilter.innerHTML =
+        '<option value="">Todas</option>';
+
+      statuses.forEach(status => {
+
+        if (!status) return;
+
+        statusFilter.innerHTML += `
+          <option value="${escapeHTML(status)}">
+            ${escapeHTML(status)}
+          </option>
+        `;
+      });
+
+      priorities.forEach(priority => {
+
+        if (!priority) return;
+
+        priorityFilter.innerHTML += `
+          <option value="${escapeHTML(priority)}">
+            ${escapeHTML(priority)}
+          </option>
+        `;
+      });
+    }
+
+    // ============================
+    // BUSCA + FILTROS
+    // ============================
+
+    function applyFilters() {
+
+      const search =
+        document.getElementById("searchInput")
+          .value
+          .toLowerCase();
+
+      const status =
+        document.getElementById("statusFilter")
+          .value
+          .toLowerCase();
+
+      const priority =
+        document.getElementById("priorityFilter")
+          .value
+          .toLowerCase();
+
+      const filtered = allData.filter(item => {
+
+        const combined = `
+          ${item.Nome_Cliente || ""}
+          ${item.Numero_Pedido || ""}
+          ${item.Produto || ""}
+          ${item.Status || ""}
+        `.toLowerCase();
+
+        const matchSearch =
+          combined.includes(search);
+
+        const matchStatus =
+          !status ||
+          item.Status?.toLowerCase() === status;
+
+        const matchPriority =
+          !priority ||
+          item.Prioridade?.toLowerCase() === priority;
+
+        return (
+          matchSearch &&
+          matchStatus &&
+          matchPriority
+        );
+      });
+
+      updateDashboard(filtered);
+    }
+
+    // ============================
+    // DATA/HORA ATUALIZAÇÃO
+    // ============================
+
+    function updateLastUpdate() {
+
+      const now = new Date();
+
+      document.getElementById("lastUpdate")
+        .textContent =
+        now.toLocaleString("pt-BR");
+    }
+
+    // ============================
+    // GRÁFICO
+    // ============================
+
+    function renderChart(productMap) {
+
+      const canvas =
+        document.getElementById("productChart");
+
+      const ctx = canvas.getContext("2d");
+
+      const labels = Object.keys(productMap);
+      const values = Object.values(productMap);
+
+      ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      canvas.width = canvas.offsetWidth;
+      canvas.height = 400;
+
+      const maxValue = Math.max(...values, 1);
+
+      const barWidth = 60;
+      const gap = 30;
+      const startX = 60;
+      const chartHeight = 300;
+
+      labels.forEach((label, index) => {
+
+        const value = values[index];
+
+        const barHeight =
+          (value / maxValue) * chartHeight;
+
+        const x =
+          startX + index * (barWidth + gap);
+
+        const y =
+          canvas.height - barHeight - 60;
+
+        // barra
+        ctx.fillStyle = "#2563eb";
+
+        ctx.fillRect(
+          x,
+          y,
+          barWidth,
+          barHeight
+        );
+
+        // valor
+        ctx.fillStyle = "#111827";
+        ctx.font = "14px Arial";
+
+        ctx.fillText(
+          value,
+          x + 20,
+          y - 10
+        );
+
+        // label
+        ctx.save();
+
+        ctx.translate(
+          x + 20,
+          canvas.height - 20
+        );
+
+        ctx.rotate(-0.5);
+
+        ctx.fillText(
+          label,
+          0,
+          0
+        );
+
+        ctx.restore();
+      });
+    }
+
+    // ============================
+    // EVENTOS
+    // ============================
+
+    document
+      .getElementById("searchInput")
+      .addEventListener("input", applyFilters);
+
+    document
+      .getElementById("statusFilter")
+      .addEventListener("change", applyFilters);
+
+    document
+      .getElementById("priorityFilter")
+      .addEventListener("change", applyFilters);
+
+    // ============================
+    // INICIALIZAÇÃO
+    // ============================
+
+    loadData();
+
+    // Atualização automática a cada 90 segundos
+    setInterval(loadData, 90000);
+
+  </script>
+
+</body>
+</html>

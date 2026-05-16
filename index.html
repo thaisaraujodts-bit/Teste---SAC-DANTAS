@@ -931,6 +931,14 @@
     ───────────────────────────────────────────────────────────────── */
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTwd8BZdyjbVDMMyXwOxqMkbxIYUz8b9ECwNvY2BYvwWjm6N4k4wHybiKM88bPV2IrCx0H9zZgKCggl/pub?gid=0&single=true&output=csv';
 
+    // CORS proxy fallbacks — tenta cada um em sequência
+    const PROXIES = [
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      url => `https://cors-anywhere.herokuapp.com/${url}`,
+      url => url, // último recurso: direto (pode funcionar em alguns ambientes)
+    ];
+
     const ROWS_PER_PAGE = 12;
     const CAT_COLORS = [
       '#2d7bef','#22d3ee','#a78bfa','#34d399','#fbbf24',
@@ -1000,18 +1008,33 @@
     }
 
     /* ─── LOAD DATA ────────────────────────────────────────────────── */
+    async function fetchCSV() {
+      const stamped = CSV_URL + '&t=' + Date.now();
+      const proxies = [
+        u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+        u => u, // direto (funciona quando o browser não bloqueia)
+      ];
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy(stamped), { cache: 'no-store' });
+          if (!res.ok) continue;
+          const text = await res.text();
+          if (text.includes(',') && text.trim().length > 10) return text;
+        } catch (_) { /* tenta próximo */ }
+      }
+      throw new Error('Não foi possível carregar o CSV. Verifique se a planilha está publicada como CSV no Google Sheets.');
+    }
+
     async function loadData() {
       const overlay = document.getElementById('loadingOverlay');
       const btn     = document.getElementById('refreshBtn');
-      const icon    = document.getElementById('refreshIcon');
 
       overlay.classList.add('active');
       btn.classList.add('spinning');
 
       try {
-        const res = await fetch(CSV_URL + '&t=' + Date.now());
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
+        const text = await fetchCSV();
         allData = parseCSV(text);
 
         buildFilters(allData);
@@ -1031,7 +1054,7 @@
         document.getElementById('statusPill').style.cssText =
           'background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.2);color:var(--danger)';
         document.getElementById('statusLabel').textContent = 'Erro';
-        toast('Falha ao carregar dados: ' + e.message, 'error');
+        toast('Falha: ' + e.message, 'error');
       } finally {
         overlay.classList.remove('active');
         btn.classList.remove('spinning');
